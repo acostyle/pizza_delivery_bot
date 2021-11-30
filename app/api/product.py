@@ -3,7 +3,7 @@
 import requests
 from slugify import slugify
 
-from settings import API_BASE_URL
+from .settings import API_BASE_URL
 
 
 def create_product(access_token, product):
@@ -76,3 +76,40 @@ def link_picture_to_product(access_token, product_id, picture_id):
     )
     response = requests.post(url=api_url, headers=headers, json=payload)
     response.raise_for_status()
+
+
+def get_all_products(access_token):
+    headers = {
+        'Authorization': 'Bearer {0}'.format(access_token),
+        'content-type': 'application/json',
+    }
+    api_url = '{0}/v2/products'.format(API_BASE_URL)
+    response = requests.get(url=api_url, headers=headers)
+    response.raise_for_status()
+    products_data = response.json()
+
+    products = [product for product in products_data['data']]
+
+    return products
+
+
+def get_product_by_id(access_token, product_id):
+    headers = {
+        'Authorization': 'Bearer {0}'.format(access_token),
+    }
+    api_url = '{0}/v2/products/{1}'.format(API_BASE_URL, product_id)
+    response = requests.get(url=api_url, headers=headers)
+    response.raise_for_status()
+
+    return response.json()['data']
+
+
+def get_product_photo_by_id(access_token, product_id):
+    headers = {
+        'Authorization': 'Bearer {0}'.format(access_token),
+    }
+    api_url = '{0}/v2/files/{1}'.format(API_BASE_URL, product_id)
+    response = requests.get(url=api_url, headers=headers)
+    response.raise_for_status()
+
+    return response.json()['data']['link']['href']

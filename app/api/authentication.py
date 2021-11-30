@@ -2,7 +2,7 @@
 
 import requests
 
-from settings import API_BASE_URL, CLIENT_ID, CLIENT_SECRET
+from .settings import API_BASE_URL, CLIENT_ID, CLIENT_SECRET
 
 
 def get_access_token(redis_db):
@@ -17,7 +17,7 @@ def get_access_token(redis_db):
     """
     access_token = redis_db.get('access_token')
     if not access_token:
-        access_token, time_to_expire = get_auth_token()
+        access_token, time_to_expire = get_auth_data()
         redis_db.set(
             'access_token',
             access_token,
@@ -27,7 +27,7 @@ def get_access_token(redis_db):
     return access_token
 
 
-def get_auth_token():
+def get_auth_data():
     """
     Create auth data.
 

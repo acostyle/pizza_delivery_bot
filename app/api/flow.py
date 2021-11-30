@@ -3,7 +3,7 @@
 import requests
 from slugify import slugify
 
-from settings import API_BASE_URL
+from .settings import API_BASE_URL
 
 
 def create_flow(access_token, name, description):

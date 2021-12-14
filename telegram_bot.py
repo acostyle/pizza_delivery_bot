@@ -1,17 +1,15 @@
 import logging
-from math import prod
 import redis
 from environs import Env
-from requests.models import HTTPError
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Filters, Updater
 from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler
-from validate_email import validate_email
+
 
 from app.bots.cart import generate_cart
 from app.bots.keyboard import create_menu_markup
-
+from app.bots.geocoder import fetch_coordinates
 from app.api.authentication import get_access_token
 from app.api.customer import create_customer
 from app.api.product import get_product_by_id, get_product_photo_by_id, get_all_products
@@ -27,6 +25,7 @@ TELEGRAM_TOKEN = env.str('TELEGRAM_BOT_TOKEN')
 REDIS_PASSWORD = env.str('REDIS_PASSWORD')
 REDIS_HOST = env.str('REDIS_HOST')
 REDIS_PORT = env.int('REDIS_PORT')
+YA_API_KEY = env.str('YA_API_KEY')
 
 _database = None
 
@@ -170,12 +169,12 @@ def handle_cart(bot, update):
 
     elif query.data == 'pay':
         bot.edit_message_text(
-            text='Please, send your email',
+            text='Please, send your location',
             chat_id=query.message.chat_id,
             message_id=query.message.message_id,
         )
 
-        return 'WAITING_EMAIL'
+        return 'HANDLE_WAITING'
     
     delete_product_from_cart(
         access_token,
@@ -187,28 +186,36 @@ def handle_cart(bot, update):
     return 'HANDLE_CART'
 
 
-def handle_email(bot, update):
-    access_token = get_access_token(_database)
-    email = update.message.text
-    is_valid = validate_email(email)
-    if is_valid:
+def handle_waiting(bot, update):
+    if update.message.text:
         try:
-            create_customer(access_token, str(update.message.chat_id), email)
-        except HTTPError:
-            update.message.reply_text('Try again!')
-            return 'WAITING EMAIL'
-
-        update.message.reply_text(
-            text='Manager will text you on this email: {0}'.format(email),
+            current_position = fetch_coordinates(
+                YA_API_KEY,
+                update.message.text,
+            )
+            print(f'Current pos: {current_position}')
+        except ValueError:
+            current_position = None
+            bot.send_message(
+                text='I can\'t recognize the address',
+                chat_id=update.message.chat_id,
+            )
+    else:
+        message = None
+        if update.edited_message:
+            message = update.edited_message
+        else:
+            message = update.message
+        
+        current_position = (
+            message.location.longitude,
+            message.location.latitude,
         )
-        logger.info('User sent email')
-        start(bot, update)
+    
+    update.message.reply_text(
+        text=current_position,
+    )
 
-        return 'HANDLE_DESCRIPTION'
-
-    update.message.reply_text('Error! Not valid email')
-    logger.info('User sent not valid email')
-    return 'WAITING EMAIL'
 
 
 def handle_users_reply(bot, update):
@@ -230,7 +237,7 @@ def handle_users_reply(bot, update):
         'HANDLE_MENU': handle_menu,
         'HANDLE_DESCRIPTION': handle_description,
         'HANDLE_CART': handle_cart,
-        'WAITING_EMAIL': handle_email,
+        'HANDLE_WAITING': handle_waiting,
     }
     state_handler = states_functions[user_state]
     try:

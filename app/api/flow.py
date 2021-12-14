@@ -103,3 +103,31 @@ def create_entry(access_token, entry_data, flow_slug):
     api_url = '{0}/v2/flows/{1}/entries'.format(API_BASE_URL, flow_slug)
     response = requests.post(url=api_url, headers=headers, json=payload)
     response.raise_for_status()
+
+
+def get_entries(access_token, flow_slug):
+    headers = {
+        'Authorization': 'Bearer {0}'.format(access_token),
+    }
+
+    api_url = '{0}/v2/flows/{1}/entries'.format(API_BASE_URL, flow_slug)
+    response = requests.get(url=api_url, headers=headers)
+    response.raise_for_status()
+
+    return response.json()['data']
+
+
+def get_entry(access_token, flow_slug, entry_id):
+    headers = {
+        'Authorization': 'Bearer {0}'.format(access_token),
+    }
+
+    api_url = '{0}/v2/flows/{1}/entries/{2}'.format(
+        API_BASE_URL,
+        flow_slug,
+        entry_id,
+    )
+    response = requests.get(url=api_url, headers=headers)
+    response.raise_for_status()
+
+    return response.json()['data']

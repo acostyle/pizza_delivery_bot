@@ -60,3 +60,11 @@ def create_menu_markup(access_token, page=0):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     return reply_markup
+
+
+def create_delivery_menu():
+    keyboard = [[InlineKeyboardButton('Delivery', callback_data='delivery'),
+                 InlineKeyboardButton('Pickup', callback_data='pickup')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    return reply_markup

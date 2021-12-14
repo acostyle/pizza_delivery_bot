@@ -6,14 +6,16 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Filters, Updater
 from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler
 
-
 from app.bots.cart import generate_cart
-from app.bots.keyboard import create_menu_markup
-from app.bots.geocoder import fetch_coordinates
+from app.bots.keyboard import create_menu_markup, create_delivery_menu
+from app.bots.geocoder import fetch_coordinates, get_closest_entry
 from app.api.authentication import get_access_token
 from app.api.customer import create_customer
+from app.api.flow import get_entries, get_entry
 from app.api.product import get_product_by_id, get_product_photo_by_id, get_all_products
 from app.api.cart import delete_product_from_cart, get_or_create_cart, add_product_to_cart
+
+from textwrap import dedent
 
 
 env = Env()
@@ -187,35 +189,105 @@ def handle_cart(bot, update):
 
 
 def handle_waiting(bot, update):
+    access_token = get_access_token(_database)
+
     if update.message.text:
         try:
-            current_position = fetch_coordinates(
+            longitude, latitude = fetch_coordinates(
                 YA_API_KEY,
                 update.message.text,
             )
-            print(f'Current pos: {current_position}')
+
+            current_position = float(longitude), float(latitude)
         except ValueError:
             current_position = None
             bot.send_message(
                 text='I can\'t recognize the address',
                 chat_id=update.message.chat_id,
             )
+
+            return 'HANDLE_WAITING'
     else:
-        message = None
         if update.edited_message:
             message = update.edited_message
         else:
             message = update.message
         
-        current_position = (
-            message.location.longitude,
-            message.location.latitude,
-        )
-    
-    update.message.reply_text(
-        text=current_position,
+        current_position = message.location.longitude,\
+            message.location.latitude
+
+    flow_slug = 'pizzeria'
+
+    flow_entries = get_entries(access_token, flow_slug)
+    closest_entry = get_closest_entry(current_position, flow_entries)
+    entry = get_entry(access_token, flow_slug, closest_entry['id'])
+
+    distance_between_pizzeria_and_customer = round(
+        closest_entry['distance'],
+        1,
     )
 
+    if closest_entry['distance'] < 0.5:
+        reply = dedent('''\n
+        Неподалеку есть пиццерия, около {0} км. от Вас.
+        Мы можем ее доставить бесплатно, либо можете забрать сами :)
+
+        Вот адрес: {1}
+        '''.format(
+            distance_between_pizzeria_and_customer,
+            entry['address'],
+        )
+    )
+        reply_markup = create_delivery_menu()
+    
+    elif closest_entry['distance'] < 5:
+        reply = dedent('''\n
+        Ближайшая пиццерия – {0}.
+
+        До вас можно добраться на велосипеде. Доставка – 100 рублей.
+        Доставка или самовывоз?
+        '''.format(entry['address'],)
+    )
+        reply_markup = create_delivery_menu()
+    
+    elif closest_entry['distance'] < 20:
+        reply = dedent('''\n
+        Ближайшая пиццерия – {0}.
+
+        Доставка будет 300 рублей.
+        Доставить курьером или сами заберете?
+        '''.format(entry['address'])
+    )
+    
+    else:
+        reply = dedent('''\n
+        Ближайшая пиццерия в {0} км. от Вас.
+        Наши курьеры не могут доставить пиццу так далеко :с
+        '''.format(distance_between_pizzeria_and_customer)
+    )
+        reply_markup = None
+        bot.send_message(
+            text=reply,
+            chat_id=update.message.chat_id,
+        )
+    
+    if reply_markup:
+        bot.send_message(
+            text=reply,
+            chat_id=update.message.chat_id,
+            reply_markup=reply_markup,
+        )
+    
+        return 'HANDLE_DELIVERY'
+
+
+def handle_delivery(bot, update):
+    query = update.callback_query
+
+    if query.data == 'delivery':
+        pass
+    elif query.data == 'pickup':
+        pass
 
 
 def handle_users_reply(bot, update):
@@ -238,6 +310,7 @@ def handle_users_reply(bot, update):
         'HANDLE_DESCRIPTION': handle_description,
         'HANDLE_CART': handle_cart,
         'HANDLE_WAITING': handle_waiting,
+        'HANDLE_DELIVERY': handle_delivery,
     }
     state_handler = states_functions[user_state]
     try:

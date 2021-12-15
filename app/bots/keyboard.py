@@ -1,3 +1,4 @@
+import json
 import math
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from app.api.product import get_all_products
@@ -62,9 +63,17 @@ def create_menu_markup(access_token, page=0):
     return reply_markup
 
 
-def create_delivery_menu():
-    keyboard = [[InlineKeyboardButton('Delivery', callback_data='delivery'),
-                 InlineKeyboardButton('Pickup', callback_data='pickup')]]
+def create_delivery_menu(delivery_man_id, customer_position):
+    delivery_data = json.dumps((delivery_man_id, customer_position))
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                'Delivery',
+                callback_data='{0}'.format(delivery_data),
+            ),
+            InlineKeyboardButton('Pickup', callback_data='pickup'),
+        ]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     return reply_markup

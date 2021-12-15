@@ -10,11 +10,12 @@ from app.bots.cart import generate_cart
 from app.bots.keyboard import create_menu_markup, create_delivery_menu
 from app.bots.geocoder import fetch_coordinates, get_closest_entry
 from app.api.authentication import get_access_token
-from app.api.customer import create_customer
-from app.api.flow import get_entries, get_entry
+from app.api.customer import create_customer_address
+from app.api.flow import create_flow, create_flow_field, get_entries, get_entry, get_flow
 from app.api.product import get_product_by_id, get_product_photo_by_id, get_all_products
 from app.api.cart import delete_product_from_cart, get_or_create_cart, add_product_to_cart
 
+import json
 from textwrap import dedent
 
 
@@ -218,10 +219,13 @@ def handle_waiting(bot, update):
 
     flow_slug = 'pizzeria'
 
+    #create_customer_address(access_token, current_position, str(update.message.chat_id))
+
     flow_entries = get_entries(access_token, flow_slug)
     closest_entry = get_closest_entry(current_position, flow_entries)
     entry = get_entry(access_token, flow_slug, closest_entry['id'])
 
+    delivery_man_id = entry['delivery_man_id']
     distance_between_pizzeria_and_customer = round(
         closest_entry['distance'],
         1,
@@ -238,17 +242,17 @@ def handle_waiting(bot, update):
             entry['address'],
         )
     )
-        reply_markup = create_delivery_menu()
-    
+        reply_markup = create_delivery_menu(delivery_man_id, current_position)
+
     elif closest_entry['distance'] < 5:
         reply = dedent('''\n
         Ближайшая пиццерия – {0}.
 
         До вас можно добраться на велосипеде. Доставка – 100 рублей.
         Доставка или самовывоз?
-        '''.format(entry['address'],)
+        '''.format(entry['address'])
     )
-        reply_markup = create_delivery_menu()
+        reply_markup = create_delivery_menu(delivery_man_id, current_position)
     
     elif closest_entry['distance'] < 20:
         reply = dedent('''\n
@@ -258,6 +262,7 @@ def handle_waiting(bot, update):
         Доставить курьером или сами заберете?
         '''.format(entry['address'])
     )
+        reply_markup = create_delivery_menu(delivery_man_id, current_position)
     
     else:
         reply = dedent('''\n
@@ -270,6 +275,8 @@ def handle_waiting(bot, update):
             text=reply,
             chat_id=update.message.chat_id,
         )
+
+        return 'HANDLE_MENU'
     
     if reply_markup:
         bot.send_message(
@@ -283,11 +290,26 @@ def handle_waiting(bot, update):
 
 def handle_delivery(bot, update):
     query = update.callback_query
-
-    if query.data == 'delivery':
-        pass
-    elif query.data == 'pickup':
-        pass
+    
+    if query.data == 'pickup':
+        bot.send_message(
+            text='Забирай сам тогда 😡',
+            chat_id=update.message.chat_id,
+        )
+    else:
+        telegram_id, (lon, lat) = json.loads(query.data)
+        reply = 'Заказ под номером {0} ожидает доставки'.format(
+            update.message.chat_id,
+        )
+        bot.send_message(
+            text=reply,
+            chat_id=telegram_id,
+        )
+        bot.send_location(
+            chat_id=telegram_id,
+            longitude=lon,
+            latitude=lat,
+        )
 
 
 def handle_users_reply(bot, update):

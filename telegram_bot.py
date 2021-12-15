@@ -288,9 +288,8 @@ def handle_waiting(bot, update):
         return 'HANDLE_DELIVERY'
 
 
-def handle_delivery(bot, update):
+def handle_delivery(bot, update, job_queue):
     query = update.callback_query
-    
     if query.data == 'pickup':
         bot.send_message(
             text='Забирай сам тогда 😡',
@@ -299,7 +298,7 @@ def handle_delivery(bot, update):
     else:
         telegram_id, (lon, lat) = json.loads(query.data)
         reply = 'Заказ под номером {0} ожидает доставки'.format(
-            update.message.chat_id,
+            telegram_id,
         )
         bot.send_message(
             text=reply,
@@ -311,8 +310,17 @@ def handle_delivery(bot, update):
             latitude=lat,
         )
 
+        job_queue.run_once(late_delivery_pizza, 60*60, context=query.message.chat.id)
 
-def handle_users_reply(bot, update):
+
+def late_delivery_pizza(bot, job_queue):
+    bot.send_message(
+        chat_id=job_queue.context,
+        text='Приятного аппетита, эта пицца достается вам бесплатно :)',
+    )
+
+
+def handle_users_reply(bot, update, job_queue):
     if update.message:
         user_reply = update.message.text
         chat_id = update.message.chat_id
@@ -336,7 +344,7 @@ def handle_users_reply(bot, update):
     }
     state_handler = states_functions[user_state]
     try:
-        next_state = state_handler(bot, update)
+        next_state = state_handler(bot, update, job_queue)
         _database.set(chat_id, next_state)
     except Exception as err:
         logger.error(err)
@@ -362,9 +370,20 @@ def main():
     get_database_connection()
     updater = Updater(TELEGRAM_TOKEN)
     dispatcher = updater.dispatcher
-    dispatcher.add_handler(CallbackQueryHandler(handle_users_reply))
-    dispatcher.add_handler(MessageHandler(Filters.text, handle_users_reply))
-    dispatcher.add_handler(CommandHandler('start', handle_users_reply))
+    dispatcher.add_handler(CallbackQueryHandler(
+        handle_users_reply,
+        pass_job_queue=True,
+    ))
+    dispatcher.add_handler(MessageHandler(
+        Filters.text,
+        handle_users_reply,
+        pass_job_queue=True,
+    ))
+    dispatcher.add_handler(CommandHandler(
+        'start',
+        handle_users_reply,
+        pass_job_queue=True,
+    ))
     dispatcher.add_handler(CallbackQueryHandler(handle_menu))
     updater.start_polling()
 

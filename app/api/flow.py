@@ -131,3 +131,15 @@ def get_entry(access_token, flow_slug, entry_id):
     response.raise_for_status()
 
     return response.json()['data']
+
+
+def get_flow(access_token, flow_id):
+    headers = {
+        'Authorization': 'Bearer {0}'.format(access_token),
+    }
+
+    api_url = '{0}/v2/flows/{1}'.format(API_BASE_URL, flow_id)
+    response = requests.get(url=api_url, headers=headers)
+    response.raise_for_status()
+
+    return response.json()['data']

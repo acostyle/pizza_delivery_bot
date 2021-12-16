@@ -1,22 +1,23 @@
+import json
+from textwrap import dedent
+
 import logging
 import redis
 from environs import Env
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Filters, Updater
-from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler
+from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler, PreCheckoutQueryHandler
 
 from app.bots.cart import generate_cart
 from app.bots.keyboard import create_menu_markup, create_delivery_menu
 from app.bots.geocoder import fetch_coordinates, get_closest_entry
+from app.bots.payment import start_without_shipping, precheckout_callback, successful_payment_callback
 from app.api.authentication import get_access_token
 from app.api.customer import create_customer_address
-from app.api.flow import create_flow, create_flow_field, get_entries, get_entry, get_flow
-from app.api.product import get_product_by_id, get_product_photo_by_id, get_all_products
+from app.api.flow import get_entries, get_entry
+from app.api.product import get_product_by_id, get_product_photo_by_id
 from app.api.cart import delete_product_from_cart, get_or_create_cart, add_product_to_cart
-
-import json
-from textwrap import dedent
 
 
 env = Env()
@@ -33,7 +34,7 @@ YA_API_KEY = env.str('YA_API_KEY')
 _database = None
 
 
-def start(bot, update):
+def start(bot, update, job_queue):
     logger.info('User started bot')
     access_token = get_access_token(_database)
     get_or_create_cart(access_token, update.message.chat_id)
@@ -45,7 +46,7 @@ def start(bot, update):
     return 'HANDLE_MENU'
 
 
-def handle_menu(bot, update):
+def handle_menu(bot, update, job_queue):
     access_token = get_access_token(_database)
     query = update.callback_query
     
@@ -119,7 +120,7 @@ def handle_menu(bot, update):
     return 'HANDLE_DESCRIPTION'
 
 
-def handle_description(bot, update):
+def handle_description(bot, update, job_queue):
     access_token = get_access_token(_database)
     query = update.callback_query
 
@@ -152,10 +153,10 @@ def handle_description(bot, update):
     return 'HANDLE_MENU'
 
 
-def handle_cart(bot, update):
+def handle_cart(bot, update, job_queue):
     access_token = get_access_token(_database)
     query = update.callback_query
-
+    payment, price = query.data.split(', ')
     if query.data == 'menu':
         reply_markup = create_menu_markup(access_token)
         bot.send_message(
@@ -170,12 +171,8 @@ def handle_cart(bot, update):
 
         return 'HANDLE_MENU'
 
-    elif query.data == 'pay':
-        bot.edit_message_text(
-            text='Please, send your location',
-            chat_id=query.message.chat_id,
-            message_id=query.message.message_id,
-        )
+    elif payment == 'payment':
+        start_without_shipping(bot, update, int(price))
 
         return 'HANDLE_WAITING'
     
@@ -189,37 +186,25 @@ def handle_cart(bot, update):
     return 'HANDLE_CART'
 
 
-def handle_waiting(bot, update):
+def handle_waiting(bot, update, job_queue):
     access_token = get_access_token(_database)
 
-    if update.message.text:
-        try:
-            longitude, latitude = fetch_coordinates(
-                YA_API_KEY,
-                update.message.text,
-            )
-
-            current_position = float(longitude), float(latitude)
-        except ValueError:
-            current_position = None
+    if location := update.message.location:
+        current_position = (location.latitude, location.longitude)
+    elif not (current_position := fetch_coordinates(
+        YA_API_KEY,
+        update.message.text,
+    )):
             bot.send_message(
                 text='I can\'t recognize the address',
                 chat_id=update.message.chat_id,
             )
 
             return 'HANDLE_WAITING'
-    else:
-        if update.edited_message:
-            message = update.edited_message
-        else:
-            message = update.message
-        
-        current_position = message.location.longitude,\
-            message.location.latitude
 
     flow_slug = 'pizzeria'
 
-    #create_customer_address(access_token, current_position, str(update.message.chat_id))
+    create_customer_address(access_token, current_position, str(update.message.chat_id))
 
     flow_entries = get_entries(access_token, flow_slug)
     closest_entry = get_closest_entry(current_position, flow_entries)
@@ -270,7 +255,8 @@ def handle_waiting(bot, update):
         Наши курьеры не могут доставить пиццу так далеко :с
         '''.format(distance_between_pizzeria_and_customer)
     )
-        reply_markup = None
+        keyboard = [InlineKeyboardButton('Menu', callback_data='menu')]
+        reply_markup = InlineKeyboardMarkup(keyboard)
         bot.send_message(
             text=reply,
             chat_id=update.message.chat_id,
@@ -293,7 +279,7 @@ def handle_delivery(bot, update, job_queue):
     if query.data == 'pickup':
         bot.send_message(
             text='Забирай сам тогда 😡',
-            chat_id=update.message.chat_id,
+            chat_id=update.message.chat.id,
         )
     else:
         telegram_id, (lon, lat) = json.loads(query.data)
@@ -375,7 +361,7 @@ def main():
         pass_job_queue=True,
     ))
     dispatcher.add_handler(MessageHandler(
-        Filters.text,
+        Filters.text | Filters.location,
         handle_users_reply,
         pass_job_queue=True,
     ))
@@ -385,6 +371,11 @@ def main():
         pass_job_queue=True,
     ))
     dispatcher.add_handler(CallbackQueryHandler(handle_menu))
+    dispatcher.add_handler(PreCheckoutQueryHandler(precheckout_callback))
+    dispatcher.add_handler(MessageHandler(
+        Filters.successful_payment,
+        successful_payment_callback,
+    ))
     updater.start_polling()
 
 

@@ -1,10 +1,21 @@
 import json
 import math
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from app.api.product import get_all_products
 
 
 def get_pagination(access_token, items_per_page):
+    """
+    Build pagination buttons.
+
+    Returns:
+        return: paginated data.
+
+    Args:
+        access_token: required to get access to the API.
+        items_per_page: number of desired items per page.
+    """
     products = get_all_products(access_token)
 
     max_page = math.ceil(len(products) / items_per_page)
@@ -22,6 +33,16 @@ def get_pagination(access_token, items_per_page):
 
 
 def create_menu_markup(access_token, page=0):
+    """
+    Build menu keyboard.
+
+    Returns:
+        return: menu keyboard markup.
+
+    Args:
+        access_token: required to get access to the API.
+        page: number of page.
+    """
     products_per_page = 8
     products = get_pagination(access_token, products_per_page)
     
@@ -64,6 +85,16 @@ def create_menu_markup(access_token, page=0):
 
 
 def create_delivery_menu(delivery_man_id, customer_position):
+    """
+    Build keyboard for delivery option.
+
+    Returns:
+        return: delivery keyboard markup.
+
+    Args:
+        delivery_man_id: ID of courier.
+        customer_position: location of customer.
+    """
     delivery_data = json.dumps((delivery_man_id, customer_position))
     keyboard = [
         [

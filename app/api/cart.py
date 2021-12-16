@@ -1,9 +1,21 @@
+"""Functions for manipulating with Carts in Moltin API."""
+
 import requests
 
 from .settings import API_BASE_URL
 
 
 def get_or_create_cart(access_token, cart_id):
+    """
+    Get or create a cart.
+
+    Returns:
+        return: data about the cart.
+
+    Args:
+        access_token: required to get access to the API.
+        cart_id: ID for the cart that the customer created.
+    """
     headers = {
         'Authorization': 'Bearer {0}'.format(access_token),
     }
@@ -16,7 +28,18 @@ def get_or_create_cart(access_token, cart_id):
 
 
 def add_product_to_cart(access_token, cart_id, product_id, product_amount):
+    """
+    Add product to a cart.
 
+    Returns:
+        return: data about the cart.
+
+    Args:
+        access_token: required to get access to the API.
+        cart_id: ID for the cart that the customer created.
+        product_id: ID of the product you want to add to cart.
+        product_amount: number of products to add to the cart.
+    """
     headers = {
         'Authorization': 'Bearer {0}'.format(access_token),
         'Content-type': 'application/json',
@@ -39,6 +62,16 @@ def add_product_to_cart(access_token, cart_id, product_id, product_amount):
 
 
 def get_cart_items(access_token, cart_id):
+    """
+    Get all items from the cart.
+
+    Returns:
+        return: data about the cart items.
+
+    Args:
+        access_token: required to get access to the API.
+        cart_id: ID for the cart that the customer created.
+    """
     headers = {
         'Authorization': 'Bearer {0}'.format(access_token),
     }
@@ -51,6 +84,17 @@ def get_cart_items(access_token, cart_id):
 
 
 def delete_product_from_cart(access_token, cart_id, product_id):
+    """
+    Remove items from cart.
+
+    Returns:
+        return: returns cart items.
+
+    Args:
+        access_token: required to get access to the API.
+        cart_id: ID for the cart that the customer created.
+        product_id: ID of the product you want to remove from cart.
+    """
     headers = {
         'Authorization': 'Bearer {0}'.format(access_token),
     }

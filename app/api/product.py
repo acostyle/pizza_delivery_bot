@@ -79,6 +79,15 @@ def link_picture_to_product(access_token, product_id, picture_id):
 
 
 def get_all_products(access_token):
+    """
+    Get all products.
+
+    Returns:
+        return: a list with all products.
+
+    Args:
+        access_token: required to get access to the API.
+    """
     headers = {
         'Authorization': 'Bearer {0}'.format(access_token),
         'content-type': 'application/json',
@@ -94,6 +103,16 @@ def get_all_products(access_token):
 
 
 def get_product_by_id(access_token, product_id):
+    """
+    Get product by id.
+
+    Returns:
+        return: data about the product.
+
+    Args:
+        access_token: required to get access to the API.
+        product_id: specifies needed product.
+    """
     headers = {
         'Authorization': 'Bearer {0}'.format(access_token),
     }
@@ -105,6 +124,16 @@ def get_product_by_id(access_token, product_id):
 
 
 def get_product_photo_by_id(access_token, product_id):
+    """
+    Get product photo by id.
+
+    Returns:
+        return: link to the product photo.
+
+    Args:
+        access_token: required to get access to the API.
+        product_id: specifies needed product.
+    """
     headers = {
         'Authorization': 'Bearer {0}'.format(access_token),
     }

@@ -1,12 +1,22 @@
+"""Cart fucntions for telegram bot."""
+
 from textwrap import dedent
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from app.api.cart import get_cart_items
 from app.api.authentication import get_access_token
+from app.api.cart import get_cart_items
 
 
 def generate_cart(db, bot, update):
+    """
+    Generate cart keyboard.
+
+    Args:
+        db: database for access_token.
+        bot: a pre-initialized bot instance.
+        update: Update class instance that represents an incoming update.
+    """
     access_token = get_access_token(db)
     query = update.callback_query
     cart_items = get_cart_items(access_token, query.message.chat_id)
@@ -22,7 +32,6 @@ def generate_cart(db, bot, update):
     keyboard.append(
         [
             InlineKeyboardButton('Menu', callback_data='menu'),
-            InlineKeyboardButton('Pay', callback_data='pay'),
         ],
     )
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -61,6 +70,8 @@ def generate_cart(db, bot, update):
 
     cart_description.append('\n\nTotal: {0}'.format(total))
     cart_recipe = ''.join(cart_description)
+    keyboard.append([InlineKeyboardButton('Pay', callback_data='payment, {0}'.format(total_price))])
+    reply_markup = InlineKeyboardMarkup(keyboard)
     bot.send_message(
         text=cart_recipe,
         reply_markup=reply_markup,

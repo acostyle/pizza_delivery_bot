@@ -1,8 +1,20 @@
+"""Geo functions for telegram bot."""
+
 import requests
 
 from geopy.distance import distance
 
 def fetch_coordinates(apikey, address):
+    """
+    Get the coordinates of address.
+
+    Returns:
+        return: longitude and latitude of address.
+
+    Args:
+        apikey: token for Yandex service.
+        address: name of specific place.
+    """
     base_url = "https://geocode-maps.yandex.ru/1.x"
     response = requests.get(base_url, params={
         "geocode": address,
@@ -22,10 +34,29 @@ def fetch_coordinates(apikey, address):
 
 
 def min_distance(entry):
+    """
+    Return distance of entry.
+
+    Returns:
+        return: distance from entry data.
+
+    Args:
+        entry: data of pizzeria.
+    """
     return entry['distance']
 
 
 def get_closest_entry(current_position, entries):
+    """
+    Get closest pizzeria.
+
+    Returns:
+        return: closes entry.
+
+    Args:
+        current_position: location of user.
+        entries: data of all pizzerias.
+    """
     result = []
 
     for entry in entries:

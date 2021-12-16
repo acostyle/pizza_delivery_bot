@@ -106,6 +106,17 @@ def create_entry(access_token, entry_data, flow_slug):
 
 
 def get_entries(access_token, flow_slug):
+    """
+    Get all entries of chosen flow.
+
+    Returns:
+        return: data about all entries.
+
+    Args:
+        access_token: required to get access to the API.
+        flow_slug: specifies the slug of the flow.
+
+    """
     headers = {
         'Authorization': 'Bearer {0}'.format(access_token),
     }
@@ -118,6 +129,18 @@ def get_entries(access_token, flow_slug):
 
 
 def get_entry(access_token, flow_slug, entry_id):
+    """
+    Get one entry of chosen flow.
+
+    Returns:
+        return: data about entry.
+
+    Args:
+        access_token: required to get access to the API.
+        flow_slug: specifies the slug of the flow.
+        entry_id: specifies an entry to return data.
+
+    """
     headers = {
         'Authorization': 'Bearer {0}'.format(access_token),
     }
@@ -134,6 +157,17 @@ def get_entry(access_token, flow_slug, entry_id):
 
 
 def get_flow(access_token, flow_id):
+    """
+    Get flow.
+
+    Returns:
+        return: data about flow.
+
+    Args:
+        access_token: required to get access to the API.
+        flow_id: specifies the id of the flow.
+
+    """
     headers = {
         'Authorization': 'Bearer {0}'.format(access_token),
     }

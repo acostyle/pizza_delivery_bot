@@ -33,19 +33,6 @@ def fetch_coordinates(apikey, address):
     return lon, lat
 
 
-def min_distance(entry):
-    """
-    Return distance of entry.
-
-    Returns:
-        return: distance from entry data.
-
-    Args:
-        entry: data of pizzeria.
-    """
-    return entry['distance']
-
-
 def get_closest_entry(current_position, entries):
     """
     Get closest pizzeria.
@@ -75,4 +62,4 @@ def get_closest_entry(current_position, entries):
             }
         )
 
-    return min(result, key=min_distance)
+    return min(result, key=entry['distance'])

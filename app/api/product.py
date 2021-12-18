@@ -95,11 +95,11 @@ def get_all_products(access_token):
     api_url = '{0}/v2/products'.format(API_BASE_URL)
     response = requests.get(url=api_url, headers=headers)
     response.raise_for_status()
-    products_data = response.json()
+    products = response.json()
 
-    products = [product for product in products_data['data']]
+    all_products = [product for product in products['data']]
 
-    return products
+    return all_products
 
 
 def get_product_by_id(access_token, product_id):

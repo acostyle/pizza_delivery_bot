@@ -206,17 +206,17 @@ def handle_waiting(bot, update, job_queue):
 
     create_customer_address(access_token, current_position, str(update.message.chat_id))
 
-    flow_entries = get_entries(access_token, flow_slug)
-    closest_entry = get_closest_entry(current_position, flow_entries)
-    entry = get_entry(access_token, flow_slug, closest_entry['id'])
+    flow_pizzerias = get_entries(access_token, flow_slug)
+    closest_pizzeria = get_closest_entry(current_position, flow_pizzerias)
+    pizzeria = get_entry(access_token, flow_slug, closest_pizzeria['id'])
 
-    delivery_man_id = entry['delivery_man_id']
+    delivery_man_id = pizzeria['delivery_man_id']
     distance_between_pizzeria_and_customer = round(
-        closest_entry['distance'],
+        closest_pizzeria['distance'],
         1,
     )
 
-    if closest_entry['distance'] < 0.5:
+    if closest_pizzeria['distance'] < 0.5:
         reply = dedent('''\n
         Неподалеку есть пиццерия, около {0} км. от Вас.
         Мы можем ее доставить бесплатно, либо можете забрать сами :)
@@ -224,28 +224,28 @@ def handle_waiting(bot, update, job_queue):
         Вот адрес: {1}
         '''.format(
             distance_between_pizzeria_and_customer,
-            entry['address'],
+            pizzeria['address'],
         )
     )
         reply_markup = create_delivery_menu(delivery_man_id, current_position)
 
-    elif closest_entry['distance'] < 5:
+    elif closest_pizzeria['distance'] < 5:
         reply = dedent('''\n
         Ближайшая пиццерия – {0}.
 
         До вас можно добраться на велосипеде. Доставка – 100 рублей.
         Доставка или самовывоз?
-        '''.format(entry['address'])
+        '''.format(pizzeria['address'])
     )
         reply_markup = create_delivery_menu(delivery_man_id, current_position)
     
-    elif closest_entry['distance'] < 20:
+    elif closest_pizzeria['distance'] < 20:
         reply = dedent('''\n
         Ближайшая пиццерия – {0}.
 
         Доставка будет 300 рублей.
         Доставить курьером или сами заберете?
-        '''.format(entry['address'])
+        '''.format(pizzeria['address'])
     )
         reply_markup = create_delivery_menu(delivery_man_id, current_position)
     

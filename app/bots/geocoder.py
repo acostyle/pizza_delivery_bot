@@ -62,4 +62,4 @@ def get_closest_entry(current_position, entries):
             }
         )
 
-    return min(result, key=entry['distance'])
+    return min(result, key=lambda entry: entry['distance'])
